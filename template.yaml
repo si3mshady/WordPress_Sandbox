@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  wordpress_blog
+  Sample SAM Template for wordpress_blog
+
+Globals:
+  Function:
+    Timeout: 10
+
+Parameters:
+  PublicKey:
+    Type: String
+  PrivateKey:
+    Type: String
+
+
+
+Resources:
+  LambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 
+        'Fn::Join':
+          - ''
+          - - Alarm if Lambda function Errors above threshold       
+      Namespace: AWS/Lambda
+      MetricName: Errors    
+      Statistic: Sum
+      Period: '300'
+      EvaluationPeriods: '1'
+      Threshold: '5'
+        # Ref: "AlarmThreshold"
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - arn:aws:sns:us-east-1:674406573293:Errors
+
+  RegisterNewSubdomain:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Environment:
+        Variables:              
+          PUBLIC_KEY:  !Ref PublicKey
+          PRIVATE_KEY:  !Ref  PrivateKey         
+      Events: 
+      CodeUri: register_to_domain
+      Handler: register/app.lambda_handler
+      Runtime: python3.8
+      Events:
+        StateChange:
+          Type: CloudWatchEvent # More info about CloudWatchEvent Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#cloudwatchevent
+          Properties:
+            Pattern:
+              source:
+                - aws.ec2
+              detail-type:
+                - EC2 Instance State-change Notification
+
